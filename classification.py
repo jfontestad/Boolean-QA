@@ -152,20 +152,18 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             Then, call optimizer.zero_grad() to reset the gradients for the next iteration.
             Then, compute the accuracy using the logits and the labels.
             """
+            input_ids = batch['input_ids']
+            attention_mask = batch['attention_mask']
+            labels = batch['labels']
 
-            input_ids = ...
-            attention_mask = ...
-
-            output = mymodel(...)
-            predictions = ...
-            model_loss = loss(...)
-
-            ...
-
-            predictions = torch.argmax(predictions, dim=1)
+            output = mymodel(input_ids, attention_mask, labels=labels)
+            predictions = torch.argmax(output.logits, dim=1)
+            model_loss = output.loss
 
             # update metrics
-            train_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+            train_accuracy.add_batch(predictions=predictions, references=labels)
+            model_loss.backward()
+            optimizer.step()
 
         # print evaluation metrics
         print(f" ===> Epoch {epoch + 1}")
@@ -260,13 +258,13 @@ if __name__ == "__main__":
                                                                                              args.small_subset)
 
     print(" >>>>>>>>  Starting training ... ")
-    train(...)
+    train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
 
     # print the GPU memory usage just to make sure things are alright
     print_gpu_memory()
 
-    val_accuracy = ...
+    val_accuracy = evaluate_model(pretrained_model, validation_dataloader, args.device)
     print(f" - Average DEV metrics: accuracy={val_accuracy}")
 
-    test_accuracy = ...
+    test_accuracy = evaluate_model(pretrained_model, test_dataloader, args.device)
     print(f" - Average TEST metrics: accuracy={test_accuracy}")
