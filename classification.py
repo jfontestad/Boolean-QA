@@ -152,9 +152,9 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             Then, call optimizer.zero_grad() to reset the gradients for the next iteration.
             Then, compute the accuracy using the logits and the labels.
             """
-            input_ids = batch['input_ids']
-            attention_mask = batch['attention_mask']
-            labels = batch['labels']
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
 
             output = mymodel(input_ids, attention_mask, labels=labels)
             predictions = torch.argmax(output.logits, dim=1)
