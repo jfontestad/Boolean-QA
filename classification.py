@@ -187,7 +187,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     plt.ylabel('Training Acc')
     plt.legend()
     plt.savefig('train_acc.png')
-    plt.savefig('train_acc.pdf')
+    # plt.savefig('train_acc.pdf')
 
     # Plotting epoch-wise validation accuracy curve:
     plt.plot(val_acc_store, '-o', label='val_acc', color='green')
@@ -195,7 +195,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     plt.ylabel('Validation Acc')
     plt.legend()
     plt.savefig('val_acc.png')
-    plt.savefig('val_acc.pdf')
+    # plt.savefig('val_acc.pdf')
 
 
 def pre_process(model_name, batch_size, device, small_subset=False):
