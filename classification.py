@@ -160,13 +160,15 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             labels = batch['labels'].to(device)
 
             output = mymodel(input_ids, attention_mask, labels=labels)
+            ce_loss = loss(output.logits, labels)
+            ce_loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
             predictions = torch.argmax(output.logits, dim=1)
-            model_loss = output.loss
 
             # update metrics
             train_accuracy.add_batch(predictions=predictions, references=labels)
-            model_loss.backward()
-            optimizer.step()
 
         # print evaluation metrics
         train_acc = train_accuracy.compute()
@@ -286,7 +288,7 @@ if __name__ == "__main__":
     print_gpu_memory()
 
     val_accuracy = evaluate_model(pretrained_model, validation_dataloader, args.device)
-    print(f" - Average DEV metrics: accuracy={val_accuracy}")
+    print(f" - Average DEV metrics: accuracy={val_accuracy['accuracy']}")
 
     test_accuracy = evaluate_model(pretrained_model, test_dataloader, args.device)
-    print(f" - Average TEST metrics: accuracy={test_accuracy}")
+    print(f" - Average TEST metrics: accuracy={test_accuracy['accuracy']}")
