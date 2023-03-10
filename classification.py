@@ -216,6 +216,9 @@ def pre_process(model_name, batch_size, device, small_subset=False):
         dataset_train_subset = dataset['train'][:8000]
         dataset_dev_subset = dataset['validation']
         dataset_test_subset = dataset['train'][8000:]
+    print(dataset_train_subset.shape)
+    print(dataset_dev_subset.shape)
+    print(dataset_test_subset.shape)
 
     # maximum length of the input; any input longer than this will be truncated
     # we had to do some pre-processing on the data to figure what is the length of most instances in the dataset
