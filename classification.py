@@ -8,6 +8,7 @@ from transformers import get_scheduler
 from transformers import AutoModelForSequenceClassification
 import argparse
 import subprocess
+import matplotlib.pyplot as plt
 
 
 def print_gpu_memory():
@@ -127,6 +128,8 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     )
 
     loss = torch.nn.CrossEntropyLoss()
+    train_acc_store = []
+    val_acc_store = []
 
     for epoch in range(num_epochs):
 
@@ -166,12 +169,31 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             optimizer.step()
 
         # print evaluation metrics
+        train_acc = train_accuracy.compute()
         print(f" ===> Epoch {epoch + 1}")
-        print(f" - Average training metrics: accuracy={train_accuracy.compute()}")
+        print(f" - Average training metrics: accuracy={train_acc['accuracy']}")
+        train_acc_store.append(train_acc['accuracy'])
 
         # normally, validation would be more useful when training for many epochs
         val_accuracy = evaluate_model(mymodel, validation_dataloader, device)
-        print(f" - Average validation metrics: accuracy={val_accuracy}")
+        print(f" - Average validation metrics: accuracy={val_accuracy['accuracy']}")
+        val_acc_store.append(val_accuracy['accuracy'])
+
+    # Plotting epoch-wise train accuracy curve:
+    plt.plot(train_acc_store, '-o', label='train_acc', color='blue')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Training Acc')
+    plt.legend()
+    plt.savefig('train_acc.png')
+    plt.savefig('train_acc.pdf')
+
+    # Plotting epoch-wise validation accuracy curve:
+    plt.plot(val_acc_store, '-o', label='val_acc', color='green')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Validation Acc')
+    plt.legend()
+    plt.savefig('val_acc.png')
+    plt.savefig('val_acc.pdf')
 
 
 def pre_process(model_name, batch_size, device, small_subset=False):
