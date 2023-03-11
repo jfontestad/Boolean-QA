@@ -186,7 +186,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     plt.xlabel('Epoch Number')
     plt.ylabel('Training Acc')
     plt.legend()
-    plt.savefig('train_acc.png')
+    plt.savefig(f'train_acc_batchsize_{train_dataloader.batch_size}.png')
     # plt.savefig('train_acc.pdf')
 
     # Plotting epoch-wise validation accuracy curve:
@@ -194,7 +194,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     plt.xlabel('Epoch Number')
     plt.ylabel('Validation Acc')
     plt.legend()
-    plt.savefig('val_acc.png')
+    plt.savefig(f'val_acc_batchsize_{train_dataloader.batch_size}.png')
     # plt.savefig('val_acc.pdf')
 
 
