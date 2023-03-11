@@ -265,7 +265,7 @@ def pre_process(model_name, batch_size, device, small_subset=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--experiment", type=str, default=None)
-    parser.add_argument("--small_subset", type=bool, default=False)
+    parser.add_argument("--small_subset", type=str, default=False)
     parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -275,11 +275,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"Specified arguments: {args}")
 
+    # Fixing argparse for small_subset param
+    small_subset = str(args.small_subset).upper()
+    if small_subset == 'TRUE' or small_subset == "1":
+        small_subset = True
+    else:
+        small_subset = False
+
     # load the data and models
     pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
                                                                                              args.batch_size,
                                                                                              args.device,
-                                                                                             args.small_subset)
+                                                                                             small_subset)
 
     print(" >>>>>>>>  Starting training ... ")
     train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
