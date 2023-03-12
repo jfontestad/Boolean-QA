@@ -282,42 +282,62 @@ if __name__ == "__main__":
     else:
         small_subset = False
 
-    # Hyperparam Optimiazation
-    lrs = [1e-4, 5e-4, 1e-3]
-    epochs = [5, 7, 9]
-    best_acc = -1
-    best_test_acc = -1
-    best_lr = -1
-    best_epoch = -1
+    opti_hyperparams = False
+    if opti_hyperparams:
+        # Hyperparam Optimization
+        lrs = [1e-4, 5e-4, 1e-3]
+        epochs = [5, 7, 9]
+        best_acc = -1
+        best_test_acc = -1
+        best_lr = -1
+        best_epoch = -1
 
-    for lr in lrs:
-        for epoch in epochs:
+        for lr in lrs:
+            for epoch in epochs:
 
-            # load the data and models
-            pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
-                                                                                                     args.batch_size,
-                                                                                                     args.device,
-                                                                                                     small_subset)
+                # load the data and models
+                pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
+                                                                                                         args.batch_size,
+                                                                                                         args.device,
+                                                                                                         small_subset)
 
-            print(" >>>>>>>>  Starting training ... ")
-            # train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
-            train(pretrained_model, epoch, train_dataloader, validation_dataloader, args.device, lr)
+                print(" >>>>>>>>  Starting training ... ")
+                # train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
+                train(pretrained_model, epoch, train_dataloader, validation_dataloader, args.device, lr)
 
-            # print the GPU memory usage just to make sure things are alright
-            print_gpu_memory()
+                # print the GPU memory usage just to make sure things are alright
+                print_gpu_memory()
 
-            val_accuracy = evaluate_model(pretrained_model, validation_dataloader, args.device)
-            print(f" - Average DEV metrics: accuracy={val_accuracy['accuracy']}")
+                val_accuracy = evaluate_model(pretrained_model, validation_dataloader, args.device)
+                print(f" - Average DEV metrics: accuracy={val_accuracy['accuracy']}")
 
-            test_accuracy = evaluate_model(pretrained_model, test_dataloader, args.device)
-            print(f" - Average TEST metrics: accuracy={test_accuracy['accuracy']}")
+                test_accuracy = evaluate_model(pretrained_model, test_dataloader, args.device)
+                print(f" - Average TEST metrics: accuracy={test_accuracy['accuracy']}")
 
-            if val_accuracy['accuracy'] > best_acc:
-                best_acc = val_accuracy['accuracy']
-                best_test_acc = test_accuracy['accuracy']
-                best_lr = lr
-                best_epoch = epoch
+                if val_accuracy['accuracy'] > best_acc:
+                    best_acc = val_accuracy['accuracy']
+                    best_test_acc = test_accuracy['accuracy']
+                    best_lr = lr
+                    best_epoch = epoch
 
-            del pretrained_model, train_dataloader, validation_dataloader, test_dataloader
+                del pretrained_model, train_dataloader, validation_dataloader, test_dataloader
 
-    print(f"Best Hyperparams - LR: {best_lr}, Epochs: {best_epoch}, Validation Acc: {best_acc}, Test Acc: {best_test_acc}")
+        print(f"Best Hyperparams - LR: {best_lr}, Epochs: {best_epoch}, Validation Acc: {best_acc}, Test Acc: {best_test_acc}")
+    else:
+        # load the data and models
+        pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
+                                                                                                 args.batch_size,
+                                                                                                 args.device,
+                                                                                                 small_subset)
+
+        print(" >>>>>>>>  Starting training ... ")
+        train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
+
+        # print the GPU memory usage just to make sure things are alright
+        print_gpu_memory()
+
+        val_accuracy = evaluate_model(pretrained_model, validation_dataloader, args.device)
+        print(f" - Average DEV metrics: accuracy={val_accuracy['accuracy']}")
+
+        test_accuracy = evaluate_model(pretrained_model, test_dataloader, args.device)
+        print(f" - Average TEST metrics: accuracy={test_accuracy['accuracy']}")
