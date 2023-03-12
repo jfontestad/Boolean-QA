@@ -92,7 +92,7 @@ class T5Pooler(nn.Module):
 class T5Model(nn.Module):
     def __init__(self):
         super(T5Model, self).__init__()
-        self.t5 = T5EncoderModel.from_pretrained('t5-small')
+        self.t5 = T5EncoderModel.from_pretrained('t5-base')
         self.pooler = T5Pooler(768, nn.LeakyReLU())
         self.fc = nn.Linear(768, 1)
 
