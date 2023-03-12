@@ -1,11 +1,12 @@
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from datasets import load_dataset
 import evaluate as evaluate
-from transformers import get_scheduler
 from transformers import AutoModelForSequenceClassification
+from transformers import get_scheduler, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration
 import argparse
 import subprocess
 import matplotlib.pyplot as plt
@@ -76,11 +77,41 @@ class BoolQADataset(torch.utils.data.Dataset):
         }
 
 
-def evaluate_model(model, dataloader, device):
+class T5Pooler(nn.Module):
+    def __init__(self, hidden_size, activation=nn.Tanh()):
+        super().__init__()
+        self.dense = nn.Linear(768, hidden_size)
+        self.activation = activation
+
+    def forward(self, hidden_states):
+        # take the mean of the hidden states
+        mean_tensor = torch.mean(hidden_states, dim=1)
+        return self.activation(self.dense(mean_tensor))
+
+
+class T5Model(nn.Module):
+    def __init__(self):
+        super(T5Model, self).__init__()
+        self.t5 = T5EncoderModel.from_pretrained('t5-small')
+        self.pooler = T5Pooler(768, nn.LeakyReLU())
+        self.fc = nn.Linear(768, 1)
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.t5(input_ids, attention_mask=attention_mask)
+        pooled_outputs = self.pooler(outputs.last_hidden_state)
+        outputs = self.fc(pooled_outputs)
+        return outputs
+
+
+t5_model = T5Model()
+
+
+def evaluate_model(model, dataloader, device, t5=False):
     """ Evaluate a PyTorch Model
     :param torch.nn.Module model: the model to be evaluated
     :param torch.utils.data.DataLoader test_dataloader: DataLoader containing testing examples
     :param torch.device device: the device that we'll be training on
+    :param bool t5: if the model is t5 or not
     :return accuracy
     """
     # load metrics
@@ -89,14 +120,27 @@ def evaluate_model(model, dataloader, device):
     # turn model into evaluation mode
     model.eval()
 
-    for batch in dataloader:
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-        output = model(input_ids=input_ids, attention_mask=attention_mask)
+    if t5:
+        model = t5_model
+        t5_model.to(device)
+        for batch in dataloader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
 
-        predictions = output.logits
-        predictions = torch.argmax(predictions, dim=1)
-        dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+            output = model(input_ids=input_ids, attention_mask=attention_mask)
+            output.logits = torch.reshape(output.logits, (output.logits.size(0), -1))
+            predictions = torch.argmax(output.logits, dim=1)
+            dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+
+    else:
+        for batch in dataloader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            output = model(input_ids=input_ids, attention_mask=attention_mask)
+
+            predictions = output.logits
+            predictions = torch.argmax(predictions, dim=1)
+            dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
 
     # compute and return metrics
     return dev_accuracy.compute()
@@ -131,6 +175,10 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     train_acc_store = []
     val_acc_store = []
 
+    t5 = False
+    if isinstance(mymodel, T5ForConditionalGeneration):
+        t5 = True
+
     for epoch in range(num_epochs):
 
         # put the model in training mode (important that this is done each epoch,
@@ -159,13 +207,22 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            output = mymodel(input_ids, attention_mask, labels=labels)
-            ce_loss = loss(output.logits, labels)
+            if t5:
+                # mymodel = t5_model
+                output = mymodel(input_ids=input_ids, attention_mask=attention_mask, labels=labels.view((-1, 1)))
+                ce_loss = output.loss
+                output.logits = torch.reshape(output.logits, (output.logits.size(0), -1))
+                predictions = torch.argmax(output.logits, dim=1)
+
+            else:
+                output = mymodel(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+                ce_loss = loss(output.logits, labels)
+                predictions = torch.argmax(output.logits, dim=1)
+
             ce_loss.backward()
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
-            predictions = torch.argmax(output.logits, dim=1)
 
             # update metrics
             train_accuracy.add_batch(predictions=predictions, references=labels)
@@ -177,7 +234,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
         train_acc_store.append(train_acc['accuracy'])
 
         # normally, validation would be more useful when training for many epochs
-        val_accuracy = evaluate_model(mymodel, validation_dataloader, device)
+        val_accuracy = evaluate_model(mymodel, validation_dataloader, device, t5)
         print(f" - Average validation metrics: accuracy={val_accuracy['accuracy']}")
         val_acc_store.append(val_accuracy['accuracy'])
 
@@ -220,9 +277,15 @@ def pre_process(model_name, batch_size, device, small_subset=False):
     # maximum length of the input; any input longer than this will be truncated
     # we had to do some pre-processing on the data to figure what is the length of most instances in the dataset
     max_len = 128
+    t5 = False
+    if 't5' in model_name:
+        t5 = True
 
     print("Loading the tokenizer...")
-    mytokenizer = AutoTokenizer.from_pretrained(model_name)
+    if t5:
+        mytokenizer = T5Tokenizer.from_pretrained(model_name)
+    else:
+        mytokenizer = AutoTokenizer.from_pretrained(model_name)
 
     print("Loding the data into DS...")
     train_dataset = BoolQADataset(
@@ -254,7 +317,10 @@ def pre_process(model_name, batch_size, device, small_subset=False):
 
     # from Hugging Face (transformers), read their documentation to do this.
     print("Loading the model ...")
-    pretrained_model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    if t5:
+        pretrained_model = T5ForConditionalGeneration.from_pretrained(model_name, num_labels=2)
+    else:
+        pretrained_model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
     print("Moving model to device ..." + str(device))
     pretrained_model.to(device)
@@ -322,7 +388,8 @@ if __name__ == "__main__":
 
                 del pretrained_model, train_dataloader, validation_dataloader, test_dataloader
 
-        print(f"Best Hyperparams - LR: {best_lr}, Epochs: {best_epoch}, Validation Acc: {best_acc}, Test Acc: {best_test_acc}")
+        print(
+            f"Best Hyperparams - LR: {best_lr}, Epochs: {best_epoch}, Validation Acc: {best_acc}, Test Acc: {best_test_acc}")
     else:
         # load the data and models
         pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
