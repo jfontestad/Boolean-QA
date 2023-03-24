@@ -1,12 +1,12 @@
+import torch
 import numpy as np
 
 # u = np.full((2, 3), 2)
-#
+
 # print(u)
 # print(np.einsum("ij->j", u))
 # print(np.einsum("ij->i", u))
 
-import torch
 
 x = torch.rand(4, 4)
 y0 = torch.rand(5)
@@ -26,6 +26,11 @@ s1 = torch.rand(11, 3, 17, 5)
 
 # b0 = x.T
 # b1 = x.T
+# b2 = torch.permute(z0, (2, 0, 1))
+# b3 = torch.permute(z0, (2, 0, 1))
+# b4 = torch.permute(w, (2, 1, 0, 3))
+# b5 = torch.permute(w, (0, 1, 3, 2))
+# b6 = torch.permute(w, (2, 1, 0, 3))
 
 
 # identity
@@ -36,35 +41,24 @@ a2 = torch.einsum('ijk', z0)
 # permute
 b0 = torch.einsum('ij->ji', x)
 b1 = torch.einsum('ba', x)
-
-print(z0)
 b2 = torch.einsum('jki', z0)
-print(b2)
-print(z0.shape)
-print(b2.shape)
-print(z0.permute((1,2,0)).shape)
-print(z0.T.shape)
-# b2_test = np.transpose(z0, (1,2,0)) #z0[:1,2,0]
-# print(b2_test == b2)
-1/0
-
-b3 = torch.einsum('ijk - > kij ', z0)
+b3 = torch.einsum('ijk->kij', z0)
 b4 = torch.einsum(' kjil ', w)
-b5 = torch.einsum(' ... ij - >... ji ', w)
-b6 = torch.einsum(' abc ... - > cba ... ', w)
+b5 = torch.einsum('...ij->...ji', w)
+b6 = torch.einsum('abc...->cba...', w)
 
 # trace
-c = torch.einsum(' ii ', x)
+c = torch.einsum('ii', x)
 
 # sum
-d0 = torch.einsum('ij - > ', x)
-d1 = torch.einsum('xyz - > ', z0)
-d2 = torch.einsum(' ijkl - > ', w)
+d0 = torch.einsum('ij->', x)
+d1 = torch.einsum('xyz->', z0)
+d2 = torch.einsum('ijkl->', w)
 
 # sum axis
-e0 = torch.einsum('ijk - > i ', z0)
-e1 = torch.einsum('ijk - > j ', z0)
-e2 = torch.einsum('ijk - > ij ', z0)
+e0 = torch.einsum('ijk->i', z0)
+e1 = torch.einsum('ijk->j', z0)
+e2 = torch.einsum('ijk->ij', z0)
 
 # matrix - vector
 f0 = torch.einsum('ij ,j - > i ', r0, y0)
