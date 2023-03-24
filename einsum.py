@@ -34,6 +34,13 @@ s1 = torch.rand(11, 3, 17, 5)
 
 # c = torch.trace(x)
 
+# d0 = torch.sum(x)
+# d1 = torch.sum(z0)
+# d2 = torch.sum(w)
+
+# e0 = torch.sum(z0, dim=(1, 2))
+# e1 = torch.sum(z0, dim=(2, 0))
+# e2 = torch.sum(z0, dim=2)
 
 # identity
 a0 = torch.einsum('i', y0)
