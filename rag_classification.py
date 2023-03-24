@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset
 import evaluate as evaluate
 from transformers import AutoModelForSequenceClassification
-from transformers import get_scheduler, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration, RagSequenceForGeneration, RagTokenizer
+from transformers import get_scheduler, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration, RagTokenizer, RagRetriever, RagSequenceForGeneration, RagTokenForGeneration
 import argparse
 import subprocess
 import matplotlib.pyplot as plt
@@ -146,7 +146,7 @@ def evaluate_model(model, dataloader, device, t5=False):
     return dev_accuracy.compute()
 
 
-def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, lr):
+def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, lr, tokenizer=None):
     """ Train a PyTorch Module
 
     :param torch.nn.Module mymodel: the model to be trained
@@ -155,6 +155,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     :param torch.utils.data.DataLoader validation_dataloader: DataLoader containing validation examples
     :param torch.device device: the device that we'll be training on
     :param float lr: learning rate
+    :param transformers.RagTokenizer tokenizer: tokenizer used to tokenize the sentences
     :return None
     """
 
@@ -175,8 +176,11 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
     train_acc_store = []
     val_acc_store = []
 
-    t5 = False
-    if isinstance(mymodel, T5ForConditionalGeneration):
+    t5, rag = False, False
+
+    if isinstance(mymodel, RagTokenForGeneration):
+        rag = True
+    elif isinstance(mymodel, T5ForConditionalGeneration):
         t5 = True
 
     for epoch in range(num_epochs):
@@ -189,6 +193,8 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
         train_accuracy = evaluate.load('accuracy')
 
         print(f"Epoch {epoch + 1} training:")
+        generated_answers = []
+        expected_answers = []
 
         for i, batch in enumerate(train_dataloader):
             """
@@ -207,7 +213,16 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            if t5:
+            if rag:
+                output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
+                ce_loss = loss(output.logits, labels)
+                generated_answer = mymodel.generate(input_ids=input_ids, attention_mask=attention_mask)
+                answer_text = tokenizer.decode(generated_answer[0], skip_special_tokens=True)
+                predictions = output.logits
+                generated_answers.append(answer_text)
+                expected_answers.append(batch['labels'])
+
+            elif t5:
                 # mymodel = t5_model
                 output = mymodel(input_ids=input_ids, attention_mask=attention_mask, labels=labels.view((-1, 1)))
                 ce_loss = output.loss
@@ -226,6 +241,8 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
 
             # update metrics
             train_accuracy.add_batch(predictions=predictions, references=labels)
+
+        1/0
 
         # print evaluation metrics
         train_acc = train_accuracy.compute()
@@ -277,13 +294,17 @@ def pre_process(model_name, batch_size, device, small_subset=False):
     # maximum length of the input; any input longer than this will be truncated
     # we had to do some pre-processing on the data to figure what is the length of most instances in the dataset
     max_len = 128
-    t5 = False
-    rag = False
-    if 't5' in model_name:
+    t5, rag = False, False
+
+    if 'rag' in model_name:
+        rag = True
+    elif 't5' in model_name:
         t5 = True
 
     print("Loading the tokenizer...")
-    if t5:
+    if rag:
+        mytokenizer = RagTokenizer.from_pretrained(model_name)
+    elif t5:
         mytokenizer = T5Tokenizer.from_pretrained(model_name)
     else:
         mytokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -318,14 +339,17 @@ def pre_process(model_name, batch_size, device, small_subset=False):
 
     # from Hugging Face (transformers), read their documentation to do this.
     print("Loading the model ...")
-    if t5:
+    if rag:
+        retriever = RagRetriever.from_pretrained(model_name, index_name="exact")
+        pretrained_model = RagTokenForGeneration.from_pretrained(model_name, retriever=retriever, num_labels=2)
+    elif t5:
         pretrained_model = T5ForConditionalGeneration.from_pretrained(model_name, num_labels=2)
     else:
         pretrained_model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
     print("Moving model to device ..." + str(device))
     pretrained_model.to(device)
-    return pretrained_model, train_dataloader, validation_dataloader, test_dataloader
+    return pretrained_model, train_dataloader, validation_dataloader, test_dataloader, mytokenizer
 
 
 # the entry point of the program
@@ -363,10 +387,10 @@ if __name__ == "__main__":
             for epoch in epochs:
 
                 # load the data and models
-                pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
-                                                                                                         args.batch_size,
-                                                                                                         args.device,
-                                                                                                         small_subset)
+                pretrained_model, train_dataloader, validation_dataloader, test_dataloader, tokenizer = pre_process(args.model,
+                                                                                                                    args.batch_size,
+                                                                                                                    args.device,
+                                                                                                                    small_subset)
 
                 print(" >>>>>>>>  Starting training ... ")
                 # train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
@@ -393,13 +417,13 @@ if __name__ == "__main__":
             f"Best Hyperparams - LR: {best_lr}, Epochs: {best_epoch}, Validation Acc: {best_acc}, Test Acc: {best_test_acc}")
     else:
         # load the data and models
-        pretrained_model, train_dataloader, validation_dataloader, test_dataloader = pre_process(args.model,
-                                                                                                 args.batch_size,
-                                                                                                 args.device,
-                                                                                                 small_subset)
+        pretrained_model, train_dataloader, validation_dataloader, test_dataloader, tokenizer = pre_process(args.model,
+                                                                                                            args.batch_size,
+                                                                                                            args.device,
+                                                                                                            small_subset)
 
         print(" >>>>>>>>  Starting training ... ")
-        train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
+        train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr, tokenizer)
 
         # print the GPU memory usage just to make sure things are alright
         print_gpu_memory()
