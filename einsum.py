@@ -32,6 +32,8 @@ s1 = torch.rand(11, 3, 17, 5)
 # b5 = torch.permute(w, (0, 1, 3, 2))
 # b6 = torch.permute(w, (2, 1, 0, 3))
 
+# c = torch.trace(x)
+
 
 # identity
 a0 = torch.einsum('i', y0)
@@ -47,7 +49,7 @@ b4 = torch.einsum(' kjil ', w)
 b5 = torch.einsum('...ij->...ji', w)
 b6 = torch.einsum('abc...->cba...', w)
 
-# trace
+# trace - sum of main diag elements
 c = torch.einsum('ii', x)
 
 # sum
@@ -61,19 +63,19 @@ e1 = torch.einsum('ijk->j', z0)
 e2 = torch.einsum('ijk->ij', z0)
 
 # matrix - vector
-f0 = torch.einsum('ij ,j - > i ', r0, y0)
-f1 = torch.einsum('i , jki - > jk ', y1, r1)
+f0 = torch.einsum('ij,j->i', r0, y0)
+f1 = torch.einsum('i,jki->jk', y1, r1)
 
 # vector - vector outer product
-g0 = torch.einsum('i ,j - > ij ', y0, y1)
-g1 = torch.einsum('a ,b ,c ,d - > abcd ', y0, y1, y0, y1)
+g0 = torch.einsum('i,j->ij ', y0, y1)
+g1 = torch.einsum('a,b,c,d->abcd', y0, y1, y0, y1)
 
 # batch mm
-h0 = torch.einsum('bij , bjk - > bik ', z0, z1)
-h1 = torch.einsum('bjk , bij - > bik ', z1, z0)
+h0 = torch.einsum('bij,bjk->bik', z0, z1)
+h1 = torch.einsum('bjk,bij->bik', z1, z0)
 
 # bilinear
-i = torch.einsum('bn , anm , bm - > ba ', r0, r1, r2)
+i = torch.einsum('bn,anm,bm->ba', r0, r1, r2)
 
 # tensor contraction
-j = torch.einsum(' pqrs , tqvr - > pstv ', s0, s1)
+j = torch.einsum('pqrs,tqvr->pstv', s0, s1)
