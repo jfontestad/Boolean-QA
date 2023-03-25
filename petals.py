@@ -2,7 +2,8 @@ import random
 import argparse
 import numpy as np
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoModelForQuestionAnswering, AutoModelForCausalLM
+from transformers import AutoTokenizer
+from petals import DistributedBloomForCausalLM
 
 
 def pre_process(num_shots=8, eval_records=30):
@@ -52,11 +53,10 @@ def create_prompt_str(samples):
     return prompt
 
 
-def evaluate_bloomz(prompt, test_samples, model_name='bigscience/bloomz'):
-    # init the bloomz tokenizer and pretrained model
+def evaluate_petals(prompt, test_samples, model_name='bigscience/bloomz', ptuning_mode='ptune'):
+    # init the petals tokenizer and pretrained model
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # model = AutoModelForQuestionAnswering.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = DistributedBloomForCausalLM.from_pretrained(model_name, tuning_mode=ptuning_mode)
 
     correct_preds = 0
     total_preds = len(test_samples)
@@ -74,14 +74,14 @@ def evaluate_bloomz(prompt, test_samples, model_name='bigscience/bloomz'):
         outputs = model.generate(inputs, max_new_tokens=3)
         result = tokenizer.decode(outputs[0])
 
-        bloomz_ans = result
-        # remove previous prompts from the bloomz's response - take only last line containing ans when \n is encountered
-        if '\n' in bloomz_ans:
-            bloomz_ans = bloomz_ans[bloomz_ans.rindex('\n') + 1:]
+        petals_ans = result
+        # remove previous prompts from the petals's response - take only last line containing ans when \n is encountered
+        if '\n' in petals_ans:
+            petals_ans = petals_ans[petals_ans.rindex('\n') + 1:]
 
-        bloomz_pred = any(true_keyword in bloomz_ans.lower() for true_keyword in ['true', 'yes'])
-        print(f"Predicted: {bloomz_pred}, Actual: {test_sample['answer']}")
-        if bloomz_pred == test_sample['answer']:
+        petals_pred = any(true_keyword in petals_ans.lower() for true_keyword in ['true', 'yes'])
+        print(f"Predicted: {petals_pred}, Actual: {test_sample['answer']}")
+        if petals_pred == test_sample['answer']:
             correct_preds += 1
 
     print(f'Correct Preds: {correct_preds}, Total Preds: {total_preds}')
@@ -100,6 +100,7 @@ if __name__ == "__main__":
     samples, test_samples = pre_process(num_shots=8, eval_records=100)
     prompt = create_prompt_str(samples=samples)
 
-    print(" >>>>>>>>  Sending prompts to Bloomz model ... ")
-    accuracy = evaluate_bloomz(prompt=prompt, test_samples=test_samples, model_name='bigscience/bloomz-560m')
+    print(" >>>>>>>>  Sending prompts to Petals model ... ")
+    accuracy = evaluate_petals(prompt=prompt, test_samples=test_samples, model_name='bigscience/bloomz-560m',
+                               ptuning_mode='ptune')
     print(f'Accuracy: {accuracy}%')
