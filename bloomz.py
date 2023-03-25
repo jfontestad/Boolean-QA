@@ -92,6 +92,7 @@ def evaluate_bloomz(prompt, test_samples, model_name='bigscience/bloomz'):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--experiment", type=str, default=None)
+    parser.add_argument("--model", type=str, default="bigscience/bloomz-560m")
 
     args = parser.parse_args()
     print(f"Specified arguments: {args}")
@@ -101,5 +102,5 @@ if __name__ == "__main__":
     prompt = create_prompt_str(samples=samples)
 
     print(" >>>>>>>>  Sending prompts to Bloomz model ... ")
-    accuracy = evaluate_bloomz(prompt=prompt, test_samples=test_samples, model_name='bigscience/bloomz-560m')
+    accuracy = evaluate_bloomz(prompt=prompt, test_samples=test_samples, model_name=args.model)
     print(f'Accuracy: {accuracy}%')
