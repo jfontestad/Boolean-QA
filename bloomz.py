@@ -71,7 +71,7 @@ def evaluate_bloomz(prompt, test_samples, model_name='bigscience/bloomz'):
         prompt_curr_sample += "Answer:"
 
         inputs = tokenizer.encode(prompt_curr_sample, return_tensors="pt")
-        outputs = model.generate(inputs)
+        outputs = model.generate(inputs, max_new_tokens=3)
         result = tokenizer.decode(outputs[0])
 
         bloomz_ans = result
