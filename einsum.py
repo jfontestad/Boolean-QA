@@ -42,6 +42,8 @@ s1 = torch.rand(11, 3, 17, 5)
 # e1 = torch.sum(z0, dim=(2, 0))
 # e2 = torch.sum(z0, dim=2)
 
+# f0 = r0@y0
+
 # identity
 a0 = torch.einsum('i', y0)
 a1 = torch.einsum('ij', x)
