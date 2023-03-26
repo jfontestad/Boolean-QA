@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from datasets import load_dataset
 from transformers import AutoTokenizer
-from petals_bloomz import DistributedBloomForCausalLM
+from petals import DistributedBloomForCausalLM
 
 
 def pre_process(num_shots=8, eval_records=30):
