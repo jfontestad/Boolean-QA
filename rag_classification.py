@@ -55,10 +55,10 @@ class BoolQADataset(torch.utils.data.Dataset):
 
         # this is input encoding for your model. Note, question comes first since we are doing question answering
         # and we don't wnt it to be truncated if the passage is too long
-        input_encoding = question + " [SEP] " + passage
+        input_encoding = f"Passage: {passage}\nQuestion: {question}?"
 
         # encode_plus will encode the input and return a dictionary of tensors
-        encoded_review = self.tokenizer.encode_plus(
+        encoded_review = self.tokenizer.prepare_seq2seq_batch(
             input_encoding,
             add_special_tokens=True,
             max_length=self.max_len,
@@ -68,6 +68,8 @@ class BoolQADataset(torch.utils.data.Dataset):
             padding="max_length",
             truncation=True
         )
+
+        answer = [1 if answer is True or answer.lower() == "yes" else 0]
 
         return {
             'input_ids': encoded_review['input_ids'][0],  # we only have one example in the batch
@@ -106,10 +108,10 @@ class T5Model(nn.Module):
 t5_model = T5Model()
 
 
-def evaluate_model(model, dataloader, device, t5=False):
+def evaluate_model(model, dataloader, device, t5=False, rag=False):
     """ Evaluate a PyTorch Model
     :param torch.nn.Module model: the model to be evaluated
-    :param torch.utils.data.DataLoader test_dataloader: DataLoader containing testing examples
+    :param torch.utils.data.DataLoader dataloader: DataLoader containing testing examples
     :param torch.device device: the device that we'll be training on
     :param bool t5: if the model is t5 or not
     :return accuracy
@@ -119,8 +121,23 @@ def evaluate_model(model, dataloader, device, t5=False):
 
     # turn model into evaluation mode
     model.eval()
+    generated_answers = []
+    expected_answers = []
 
-    if t5:
+    if rag:
+        for batch in dataloader:
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+
+            generated_answer_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask)
+            generated_answer_text = [tokenizer.decode(generated[0], skip_special_tokens=True) for generated in
+                                     generated_answer_ids]
+
+            generated_answers.extend(generated_answer_text)
+            expected_answers.extend(batch['labels'])
+            # dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+
+    elif t5:
         model = t5_model
         t5_model.to(device)
         for batch in dataloader:
@@ -143,7 +160,21 @@ def evaluate_model(model, dataloader, device, t5=False):
             dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
 
     # compute and return metrics
+    if rag:
+        return calculate_accuracy(generated_answers, expected_answers)
     return dev_accuracy.compute()
+
+
+def calculate_accuracy(generated_answers, expected_answers):
+    correct_answers = 0
+    total_answers = len(generated_answers)
+
+    for generated, expected in zip(generated_answers, expected_answers):
+        if generated.lower() == expected.lower():
+            correct_answers += 1
+
+    accuracy = correct_answers / total_answers
+    return accuracy
 
 
 def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, lr, tokenizer=None):
