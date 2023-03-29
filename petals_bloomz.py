@@ -56,7 +56,7 @@ def create_prompt_str(samples):
 def evaluate_petals(prompt, test_samples, model_name='bigscience/bloomz', ptuning_mode='ptune'):
     # init the petals tokenizer and pretrained model
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = DistributedBloomForCausalLM.from_pretrained(model_name, tuning_mode=ptuning_mode)
+    model = DistributedBloomForCausalLM.from_pretrained(model_name)#, tuning_mode=ptuning_mode)
 
     correct_preds = 0
     total_preds = len(test_samples)
