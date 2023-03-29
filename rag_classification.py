@@ -371,7 +371,7 @@ def pre_process(model_name, batch_size, device, small_subset=False):
     # from Hugging Face (transformers), read their documentation to do this.
     print("Loading the model ...")
     if rag:
-        retriever = RagRetriever.from_pretrained(model_name, index_name="exact")
+        retriever = RagRetriever.from_pretrained(model_name, index_name="exact", use_dummy_dataset=True)
         pretrained_model = RagTokenForGeneration.from_pretrained(model_name, retriever=retriever, num_labels=2)
     elif t5:
         pretrained_model = T5ForConditionalGeneration.from_pretrained(model_name, num_labels=2)
