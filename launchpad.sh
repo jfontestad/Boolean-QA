@@ -22,6 +22,7 @@ conda config --set allow_conda_downgrades true
 conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
 conda config --set allow_conda_downgrades false
+conda list
 
 #runs your code
 #srun python classification.py  --experiment "overfit" --small_subset False --device cuda --model "bert-base-uncased" --batch_size "32" --lr 1e-4 --num_epochs 9
