@@ -10,5 +10,6 @@ torchvision
 torchaudio
 sentencepiece
 faiss-gpu
+faiss
 petals
 pyopenssl
