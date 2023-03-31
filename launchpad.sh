@@ -16,6 +16,7 @@ module load anaconda
 
 conda activate toy_classification_env # open the Python environment
 
+conda install -c pytorch faiss-gpu=1.7.3 cudatoolkit=11.3
 pip install -r requirements.txt # install Python dependencies
 
 # runs your code
