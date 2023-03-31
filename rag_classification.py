@@ -246,13 +246,14 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             labels = batch['labels'].to(device)
 
             if rag:
-                output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
-                ce_loss = loss(output.logits, labels)
+                # output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
+                # ce_loss = loss(output.logits, labels)
                 generated_answer = mymodel.generate(input_ids=input_ids, attention_mask=attention_mask)
-                answer_text = tokenizer.decode(generated_answer[0], skip_special_tokens=True)
-                predictions = output.logits
+                answer_text = tokenizer.batch_decode(generated_answer, skip_special_tokens=True)
+                # predictions = output.logits
                 generated_answers.append(answer_text)
                 expected_answers.append(batch['labels'])
+                1/0
 
             elif t5:
                 # mymodel = t5_model
