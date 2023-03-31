@@ -11,3 +11,4 @@ torchaudio
 sentencepiece
 petals
 pyopenssl
+faiss-gpu
