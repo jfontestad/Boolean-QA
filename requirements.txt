@@ -12,4 +12,5 @@ sentencepiece
 faiss-gpu
 faiss
 petals
+datasets
 pyopenssl
