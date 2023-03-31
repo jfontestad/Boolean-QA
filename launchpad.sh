@@ -20,9 +20,9 @@ conda activate toy_classification_env # open the Python environment
 conda config --set allow_conda_downgrades true
 conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
-conda config --set allow_conda_downgrades false
 pip install torch torchvision torchaudio
 pip install -r requirements.txt # install Python dependencies
+conda config --set allow_conda_downgrades false
 conda list
 
 #runs your code
