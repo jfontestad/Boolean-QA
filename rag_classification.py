@@ -114,6 +114,7 @@ def evaluate_model(model, dataloader, device, t5=False, rag=False):
     :param torch.utils.data.DataLoader dataloader: DataLoader containing testing examples
     :param torch.device device: the device that we'll be training on
     :param bool t5: if the model is t5 or not
+    :param bool rag: if the model is rag or not
     :return accuracy
     """
     # load metrics
