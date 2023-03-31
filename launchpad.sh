@@ -12,8 +12,8 @@
 module load anaconda
 
 #init virtual environment if needed
-conda remove -n toy_classification_env --all
-conda create -n toy_classification_env python=3.8
+#conda remove -n toy_classification_env --all
+#conda create -n toy_classification_env python=3.8
 
 conda activate toy_classification_env # open the Python environment
 
@@ -23,9 +23,9 @@ conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
 pip install torch torchvision torchaudio
 pip install -r requirements.txt
-pip install transformers==4.26.1 datasets==2.10.0 evaluate==0.4.0 matplotlib==3.7.1 sentencepiece petals pyopenssl
+#pip install transformers==4.26.1 datasets==2.10.0 evaluate==0.4.0 matplotlib==3.7.1 sentencepiece petals pyopenssl
 conda config --set allow_conda_downgrades false
-conda list
+#conda list
 
 #runs your code
 #srun python classification.py  --experiment "overfit" --small_subset False --device cuda --model "bert-base-uncased" --batch_size "32" --lr 1e-4 --num_epochs 9
