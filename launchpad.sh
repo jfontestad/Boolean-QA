@@ -17,12 +17,12 @@ module load anaconda
 conda activate toy_classification_env # open the Python environment
 
 #conda install torch pytorch torchvision torchaudio pytorch-cuda=11.7 faiss-gpu=1.7.3 cudatoolkit=11.3 -c pytorch -c nvidia
-pip install -r requirements.txt # install Python dependencies
 conda config --set allow_conda_downgrades true
 conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
 conda config --set allow_conda_downgrades false
 pip install torch torchvision torchaudio
+pip install -r requirements.txt # install Python dependencies
 conda list
 
 #runs your code
