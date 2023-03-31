@@ -21,7 +21,8 @@ conda config --set allow_conda_downgrades true
 conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
 pip install torch torchvision torchaudio
-pip install -r requirements.txt # install Python dependencies
+pip install -r requirements.txt
+pip install transformers==4.26.1 datasets==2.10.0 evaluate==0.4.0 matplotlib==3.7.1 sentencepiece petals pyopenssl
 conda config --set allow_conda_downgrades false
 conda list
 
