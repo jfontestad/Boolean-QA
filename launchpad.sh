@@ -21,6 +21,10 @@ conda activate toy_classification_env # open the Python environment
 conda config --set allow_conda_downgrades true
 conda install -c conda-forge faiss-gpu
 conda install faiss-gpu
+
+#clear cache
+pip cache purge
+
 pip install torch torchvision torchaudio
 pip install -r requirements.txt
 #pip install transformers==4.26.1 datasets==2.10.0 evaluate==0.4.0 matplotlib==3.7.1 sentencepiece petals pyopenssl
@@ -28,11 +32,11 @@ conda config --set allow_conda_downgrades false
 #conda list
 
 #clear cache
-pip install huggingface_hub["cli"]
-huggingface-cli delete-cache
+#pip install huggingface_hub["cli"]
+#huggingface-cli delete-cache
 
 #runs your code
 #srun python classification.py  --experiment "overfit" --small_subset False --device cuda --model "bert-base-uncased" --batch_size "32" --lr 1e-4 --num_epochs 9
-srun python rag_classification.py  --experiment "rag" --small_subset True --device cuda --model "facebook/rag-token-small" --batch_size "1" --lr 1e-4 --num_epochs 3
+srun python rag_classification.py  --experiment "rag" --small_subset True --device cuda --model "facebook/rag-token-nq" --batch_size "1" --lr 1e-4 --num_epochs 3
 #srun python bloomz.py  --experiment "bloomz" --model "bigscience/bloomz-560m"
 #srun python petals_bloomz.py --experiment "petals" --model "bigscience/bloomz-560m"
