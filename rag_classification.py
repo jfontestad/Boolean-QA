@@ -130,7 +130,7 @@ def evaluate_model(model, dataloader, device, t5=False, rag=False):
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
 
-            generated_answer_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask)
+            generated_answer_ids = model.generate(context_input_ids=input_ids, context_attention_mask=attention_mask)
             generated_answer_text = [tokenizer.decode(generated[0], skip_special_tokens=True) for generated in
                                      generated_answer_ids]
 
