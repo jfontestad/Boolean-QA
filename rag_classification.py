@@ -69,13 +69,13 @@ class BoolQADataset(torch.utils.data.Dataset):
             truncation=True
         )
 
-        answer = [1 if answer is True or answer.lower() == "yes" else 0]
+        encoded_answer = self.tokenizer(text_target=answer, return_tensors="pt")
 
         return {
             'input_ids': encoded_review['input_ids'][0],  # we only have one example in the batch
             'attention_mask': encoded_review['attention_mask'][0],
             # attention mask tells the model where tokens are padding
-            'labels': torch.tensor(answer, dtype=torch.long)  # labels are the answers (yes/no)
+            'labels': torch.tensor(encoded_answer, dtype=torch.long)  # labels are the answers (yes/no)
         }
 
 
@@ -246,14 +246,13 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             labels = batch['labels'].to(device)
 
             if rag:
-                # output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
-                # ce_loss = loss(output.logits, labels)
-                generated_answer = mymodel.generate(input_ids=input_ids, attention_mask=attention_mask)
-                answer_text = tokenizer.batch_decode(generated_answer, skip_special_tokens=True)
-                # predictions = output.logits
+                output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
+                # generated_answer = mymodel.generate(input_ids=input_ids, attention_mask=attention_mask)
+                ce_loss = output.loss
+                answer_text = tokenizer.batch_decode(output, skip_special_tokens=True)
                 generated_answers.append(answer_text)
                 expected_answers.append(batch['labels'])
-                1/0
+                predictions = torch.argmax(output.logits, dim=1)
 
             elif t5:
                 # mymodel = t5_model
@@ -274,8 +273,6 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
 
             # update metrics
             train_accuracy.add_batch(predictions=predictions, references=labels)
-
-        1/0
 
         # print evaluation metrics
         train_acc = train_accuracy.compute()
@@ -373,8 +370,19 @@ def pre_process(model_name, batch_size, device, small_subset=False):
     # from Hugging Face (transformers), read their documentation to do this.
     print("Loading the model ...")
     if rag:
+        """
+        Note: We have a QA task hence we will use RagSequenceForGeneration.
+        RagTokenForGeneration generates text at the token level, meaning it generates one token at a time. This class 
+        takes as input a question and a set of retrieved documents or passages, and generates text by iteratively 
+        predicting the next token given the previous tokens. This class is useful for tasks such as language modeling, 
+        text completion, and text generation.
+        RagSequenceForGeneration, on the other hand, generates text at the sequence level, meaning it generates entire 
+        sequences of tokens at a time. This class takes as input a question and a set of retrieved documents or 
+        passages, and generates a list of complete sequences that answer the question. This class is useful for tasks 
+        such as question-answering, where the goal is to generate a sequence of tokens that answers a given question.
+        """
         retriever = RagRetriever.from_pretrained(model_name, index_name="exact", use_dummy_dataset=True)
-        pretrained_model = RagTokenForGeneration.from_pretrained(model_name, retriever=retriever, num_labels=2)
+        pretrained_model = RagSequenceForGeneration.from_pretrained(model_name, retriever=retriever, num_labels=2)
     elif t5:
         pretrained_model = T5ForConditionalGeneration.from_pretrained(model_name, num_labels=2)
     else:
