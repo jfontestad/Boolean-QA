@@ -24,8 +24,8 @@ s1 = torch.rand(11, 3, 17, 5)
 # a1 = x
 # a2 = z0
 
-# b0 = x.T
-# b1 = x.T
+# b0 = torch.permute(x, (1, 0))
+# b1 = torch.permute(x, (1, 0))
 # b2 = torch.permute(z0, (2, 0, 1))
 # b3 = torch.permute(z0, (2, 0, 1))
 # b4 = torch.permute(w, (2, 1, 0, 3))
@@ -42,7 +42,20 @@ s1 = torch.rand(11, 3, 17, 5)
 # e1 = torch.sum(z0, dim=(2, 0))
 # e2 = torch.sum(z0, dim=2)
 
-# f0 = r0@y0
+# f0 = r0 @ y0
+# f1 = torch.sum(y1 * r1, dim=-1)
+
+# g0 = torch.outer(y0, y1)
+# g1 = torch.stack([torch.stack([torch.outer(y0, y1) for _ in range(len(y0))], dim=-1) * y0 for _ in range(len(y1))],
+#                  dim=-1) * y1
+
+# h0 = torch.bmm(z0, z1)
+# h1 = torch.transpose(torch.bmm(torch.transpose(z1, 1, 2), torch.transpose(z0, 1, 2)), 1, 2)
+
+# dot = torch.tensordot(r0, r1, ([1], [1]))
+# i = torch.sum(dot * torch.stack([r2 for _ in range(dot.shape[1])], dim=1), dim=-1)
+
+# j = torch.tensordot(s0, s1, ([1, 2], [1, 3]))
 
 # identity
 a0 = torch.einsum('i', y0)
@@ -86,5 +99,5 @@ h1 = torch.einsum('bjk,bij->bik', z1, z0)
 # bilinear
 i = torch.einsum('bn,anm,bm->ba', r0, r1, r2)
 
-# tensor contraction
+# tensor contraction - a contraction of a and b over multiple dimensions.
 j = torch.einsum('pqrs,tqvr->pstv', s0, s1)
