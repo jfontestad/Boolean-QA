@@ -10,6 +10,7 @@
 #SBATCH --job-name="HW6 CS 601.471/671 homework"
 
 module load anaconda
+export TRANSFORMERS_CACHE=/scratch4/danielk/schaud31
 
 #init virtual environment if needed
 #conda remove -n toy_classification_env --all
