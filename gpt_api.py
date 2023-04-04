@@ -85,6 +85,9 @@ def evaluate_gpt3(prompt, test_samples):
             gpt_ans = gpt_ans[:gpt_ans.index('\n')]
 
         gpt_pred = 'true' in gpt_ans.lower()
+        print()
+        print(f"Passage: {test_sample['passage']}")
+        print(f"Question: {test_sample['question']}?")
         print(f"Predicted: {gpt_pred}, Actual: {test_sample['answer']}")
         if gpt_pred == test_sample['answer']:
             correct_preds += 1
