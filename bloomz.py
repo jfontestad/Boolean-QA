@@ -80,10 +80,14 @@ def evaluate_bloomz(prompt, test_samples, model_name='bigscience/bloomz'):
             bloomz_ans = bloomz_ans[bloomz_ans.rindex('\n') + 1:]
 
         bloomz_pred = any(true_keyword in bloomz_ans.lower() for true_keyword in ['true', 'yes'])
+        print()
+        print(f"Passage: {test_sample['passage']}")
+        print(f"Question: {test_sample['question']}?")
         print(f"Predicted: {bloomz_pred}, Actual: {test_sample['answer']}")
         if bloomz_pred == test_sample['answer']:
             correct_preds += 1
 
+    print()
     print(f'Correct Preds: {correct_preds}, Total Preds: {total_preds}')
     return correct_preds / total_preds * 100
 
