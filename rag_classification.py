@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset
 import evaluate as evaluate
 from transformers import AutoModelForSequenceClassification
-from transformers import get_scheduler, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration, RagTokenizer, RagRetriever, RagSequenceForGeneration, RagTokenForGeneration
+from transformers import get_scheduler, T5Tokenizer, T5EncoderModel, T5ForConditionalGeneration, RagTokenizer, \
+    RagRetriever, RagSequenceForGeneration, RagTokenForGeneration
 import argparse
 import subprocess
 import matplotlib.pyplot as plt
@@ -125,40 +126,41 @@ def evaluate_model(model, dataloader, device, t5=False, rag=False):
     generated_answers = []
     expected_answers = []
 
-    if rag:
-        for batch in dataloader:
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
+    with torch.no_grad():
+        if rag:
+            for batch in dataloader:
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
 
-            generated_answer_ids = model.generate(context_input_ids=input_ids, context_attention_mask=attention_mask)
-            generated_answer_text = [tokenizer.decode(generated[0], skip_special_tokens=True) for generated in
-                                     generated_answer_ids]
+                generated_answer_ids = model.generate(context_input_ids=input_ids, context_attention_mask=attention_mask)
+                generated_answer_text = [tokenizer.decode(generated[0], skip_special_tokens=True) for generated in
+                                         generated_answer_ids]
 
-            generated_answers.extend(generated_answer_text)
-            expected_answers.extend(batch['labels'])
-            # dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+                generated_answers.extend(generated_answer_text)
+                expected_answers.extend(batch['labels'])
+                # dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
 
-    elif t5:
-        model = t5_model
-        t5_model.to(device)
-        for batch in dataloader:
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
+        elif t5:
+            model = t5_model
+            t5_model.to(device)
+            for batch in dataloader:
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
 
-            output = model(input_ids=input_ids, attention_mask=attention_mask)
-            output.logits = torch.reshape(output.logits, (output.logits.size(0), -1))
-            predictions = torch.argmax(output.logits, dim=1)
-            dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+                output = model(input_ids=input_ids, attention_mask=attention_mask)
+                output.logits = torch.reshape(output.logits, (output.logits.size(0), -1))
+                predictions = torch.argmax(output.logits, dim=1)
+                dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
 
-    else:
-        for batch in dataloader:
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
-            output = model(input_ids=input_ids, attention_mask=attention_mask)
+        else:
+            for batch in dataloader:
+                input_ids = batch['input_ids'].to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                output = model(input_ids=input_ids, attention_mask=attention_mask)
 
-            predictions = output.logits
-            predictions = torch.argmax(predictions, dim=1)
-            dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
+                predictions = output.logits
+                predictions = torch.argmax(predictions, dim=1)
+                dev_accuracy.add_batch(predictions=predictions, references=batch['labels'])
 
     # compute and return metrics
     if rag:
@@ -183,7 +185,7 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
 
     :param torch.nn.Module mymodel: the model to be trained
     :param int num_epochs: number of epochs to train for
-    :param torch.utils.data.DataLoader train_dataloader: DataLoader containing training examples
+        :param torch.utils.data.DataLoader train_dataloader: DataLoader containing training examples
     :param torch.utils.data.DataLoader validation_dataloader: DataLoader containing validation examples
     :param torch.device device: the device that we'll be training on
     :param float lr: learning rate
@@ -227,6 +229,8 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
         print(f"Epoch {epoch + 1} training:")
         generated_answers = []
         expected_answers = []
+        generator_enc_features = []
+        question_enc_features = []
 
         for i, batch in enumerate(train_dataloader):
             """
@@ -245,9 +249,11 @@ def train(mymodel, num_epochs, train_dataloader, validation_dataloader, device, 
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            if rag:
-                output = mymodel(input_ids=input_ids, attention_mask=attention_mask)
+            if rag and input_ids.shape[1] < 512:
+                output = mymodel(input_ids=input_ids, n_docs=1, output_hidden_states=True)
                 # generated_answer = mymodel.generate(input_ids=input_ids, attention_mask=attention_mask)
+                generator_enc_features.append(output.generator_enc_last_hidden_state[0].detach().numpy())
+                question_enc_features.append(output.question_encoder_last_hidden_state[0].detach().numpy())
                 ce_loss = output.loss
                 answer_text = tokenizer.batch_decode(output, skip_special_tokens=True)
                 generated_answers.append(answer_text)
@@ -311,9 +317,9 @@ def pre_process(model_name, batch_size, device, small_subset=False):
     print("Slicing the data...")
     if small_subset:
         # use this tiny subset for debugging the implementation
-        dataset_train_subset = dataset['train'][:10]
-        dataset_dev_subset = dataset['train'][:10]
-        dataset_test_subset = dataset['train'][:10]
+        dataset_train_subset = dataset['train'][:500]
+        dataset_dev_subset = dataset['validation']
+        dataset_test_subset = dataset['test']
     else:
         # since the dataset does not come with any validation data,
         # split the training data into "train" and "dev"
@@ -428,10 +434,11 @@ if __name__ == "__main__":
             for epoch in epochs:
 
                 # load the data and models
-                pretrained_model, train_dataloader, validation_dataloader, test_dataloader, tokenizer = pre_process(args.model,
-                                                                                                                    args.batch_size,
-                                                                                                                    args.device,
-                                                                                                                    small_subset)
+                pretrained_model, train_dataloader, validation_dataloader, test_dataloader, tokenizer = pre_process(
+                    args.model,
+                    args.batch_size,
+                    args.device,
+                    small_subset)
 
                 print(" >>>>>>>>  Starting training ... ")
                 # train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr)
@@ -464,7 +471,8 @@ if __name__ == "__main__":
                                                                                                             small_subset)
 
         print(" >>>>>>>>  Starting training ... ")
-        train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr, tokenizer)
+        train(pretrained_model, args.num_epochs, train_dataloader, validation_dataloader, args.device, args.lr,
+              tokenizer)
 
         # print the GPU memory usage just to make sure things are alright
         print_gpu_memory()
