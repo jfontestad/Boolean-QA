@@ -124,10 +124,14 @@ def evaluate_petals(prompt, test_samples, model_name='bigscience/bloomz', ptunin
             petals_ans = petals_ans[petals_ans.rindex('\n') + 1:]
 
         petals_pred = any(true_keyword in petals_ans.lower() for true_keyword in ['true', 'yes'])
+        print()
+        print(f"Passage: {test_sample['passage']}")
+        print(f"Question: {test_sample['question']}?")
         print(f"Predicted: {petals_pred}, Actual: {test_sample['answer']}")
         if petals_pred == test_sample['answer']:
             correct_preds += 1
 
+    print()
     print(f'Correct Preds: {correct_preds}, Total Preds: {total_preds}')
     return correct_preds / total_preds * 100
 
